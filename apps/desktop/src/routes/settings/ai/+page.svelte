@@ -36,6 +36,9 @@
 	let diffLengthLimit: number | undefined = $state();
 	let ollamaEndpoint: string | undefined = $state();
 	let ollamaModel: string | undefined = $state();
+	let openAICompatibleProviderEndpoint: string | undefined = $state();
+	let openAICompatibleProviderModel: string | undefined = $state();
+	let openAICompatibleProviderKey: string | undefined = $state();
 
 	async function setConfiguration(key: GitAIConfigKey, value: string | undefined) {
 		if (!initialized) return;
@@ -62,6 +65,10 @@
 
 		ollamaEndpoint = await aiService.getOllamaEndpoint();
 		ollamaModel = await aiService.getOllamaModelName();
+
+		openAICompatibleProviderEndpoint = await aiService.getOpenAICompatibleProviderEndpoint();
+		openAICompatibleProviderModel = await aiService.getOpenAICompatibleProviderModel();
+		openAICompatibleProviderKey = await aiService.getOpenAICompatibleProviderKey();
 
 		// Ensure reactive declarations have finished running before we set initialized to true
 		await tick();
@@ -157,6 +164,18 @@
 	});
 	run(() => {
 		setConfiguration(GitAIConfigKey.OllamaModelName, ollamaModel);
+	});
+	run(() => {
+		setConfiguration(
+			GitAIConfigKey.OpenAICompatibleProviderEndpoint,
+			openAICompatibleProviderEndpoint
+		);
+	});
+	run(() => {
+		setConfiguration(GitAIConfigKey.OpenAICompatibleProviderModel, openAICompatibleProviderModel);
+	});
+	run(() => {
+		setSecret(AISecretHandle.OpenAICompatibleProviderKey, openAICompatibleProviderKey);
 	});
 	run(() => {
 		if (form) form.modelKind.value = modelKind;
@@ -310,7 +329,7 @@
 
 		<SectionCard
 			roundedTop={false}
-			roundedBottom={modelKind !== ModelKind.Ollama}
+			roundedBottom={false}
 			orientation="row"
 			labelFor="ollama"
 			bottomBorder={modelKind !== ModelKind.Ollama}
@@ -323,7 +342,7 @@
 			{/snippet}
 		</SectionCard>
 		{#if modelKind === ModelKind.Ollama}
-			<SectionCard roundedTop={false} orientation="row" topDivider>
+			<SectionCard roundedTop={false} roundedBottom={false} orientation="row" topDivider>
 				<div class="inputs-group">
 					<Textbox
 						label="Endpoint"
@@ -332,6 +351,45 @@
 					/>
 
 					<Textbox label="Model" bind:value={ollamaModel} placeholder="llama3" />
+				</div>
+			</SectionCard>
+		{/if}
+
+		<SectionCard
+			roundedTop={false}
+			roundedBottom={modelKind !== ModelKind.OpenAICompatibleProvider}
+			orientation="row"
+			labelFor="openai-compatible-provider"
+			bottomBorder={modelKind !== ModelKind.OpenAICompatibleProvider}
+		>
+			{#snippet title()}
+				OpenAI Compatible Provider
+			{/snippet}
+			{#snippet actions()}
+				<RadioButton
+					name="modelKind"
+					id="openai-compatible-provider"
+					value={ModelKind.OpenAICompatibleProvider}
+				/>
+			{/snippet}
+		</SectionCard>
+		{#if modelKind === ModelKind.OpenAICompatibleProvider}
+			<SectionCard roundedTop={false} orientation="row" topDivider>
+				<div class="inputs-group">
+					<Textbox
+						label="Endpoint"
+						bind:value={openAICompatibleProviderEndpoint}
+						required
+						placeholder="https://openrouter.ai/api/v1"
+					/>
+
+					<Textbox label="API key" bind:value={openAICompatibleProviderKey} placeholder="sk-..." />
+
+					<Textbox
+						label="Model"
+						bind:value={openAICompatibleProviderModel}
+						placeholder="openai/gpt-4o-mini"
+					/>
 				</div>
 			</SectionCard>
 		{/if}

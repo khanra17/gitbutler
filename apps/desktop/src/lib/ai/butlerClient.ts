@@ -20,6 +20,7 @@ function splitPromptMessagesIfNecessary(
 		}
 		case ModelKind.OpenAI:
 		case ModelKind.Ollama:
+		case ModelKind.OpenAICompatibleProvider:
 			return [prompt, undefined];
 	}
 }
