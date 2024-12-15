@@ -15,6 +15,7 @@ import {
 	OllamaClient
 } from '$lib/ai/ollamaClient';
 import { OpenAIClient } from '$lib/ai/openAIClient';
+import { OpenAICompatibleClient } from '$lib/ai/openAICompatibleClient';
 import { buildFailureFromAny, isFailure, ok, type Result } from '$lib/result';
 import { splitMessage } from '$lib/utils/commitMessage';
 import { get } from 'svelte/store';
@@ -33,7 +34,8 @@ export enum KeyOption {
 
 export enum AISecretHandle {
 	OpenAIKey = 'aiOpenAIKey',
-	AnthropicKey = 'aiAnthropicKey'
+	AnthropicKey = 'aiAnthropicKey',
+	OpenAICompatibleProviderKey = 'aiOpenAICompatibleProviderKey'
 }
 
 export enum GitAIConfigKey {
@@ -44,7 +46,9 @@ export enum GitAIConfigKey {
 	AnthropicModelName = 'gitbutler.aiAnthropicModelName',
 	DiffLengthLimit = 'gitbutler.diffLengthLimit',
 	OllamaEndpoint = 'gitbutler.aiOllamaEndpoint',
-	OllamaModelName = 'gitbutler.aiOllamaModelName'
+	OllamaModelName = 'gitbutler.aiOllamaModelName',
+	OpenAICompatibleProviderEndpoint = 'gitbutler.aiOpenAICompatibleProviderEndpoint',
+	OpenAICompatibleProviderModel = 'gitbutler.aiOpenAICompatibleProviderModel'
 }
 
 interface BaseAIServiceOpts {
@@ -182,6 +186,18 @@ export class AIService {
 		);
 	}
 
+	async getOpenAICompatibleProviderEndpoint() {
+		return await this.gitConfig.get(GitAIConfigKey.OpenAICompatibleProviderEndpoint);
+	}
+
+	async getOpenAICompatibleProviderKey() {
+		return await this.secretsService.get(AISecretHandle.OpenAICompatibleProviderKey);
+	}
+
+	async getOpenAICompatibleProviderModel() {
+		return await this.gitConfig.get(GitAIConfigKey.OpenAICompatibleProviderModel);
+	}
+
 	async usingGitButlerAPI() {
 		const modelKind = await this.getModelKind();
 		const openAIKeyOption = await this.getOpenAIKeyOption();
@@ -201,6 +217,9 @@ export class AIService {
 		const anthropicKey = await this.getAnthropicKey();
 		const ollamaEndpoint = await this.getOllamaEndpoint();
 		const ollamaModelName = await this.getOllamaModelName();
+		const openAICompatibleProviderEndpoint = await this.getOpenAICompatibleProviderEndpoint();
+		const openAICompatibleProviderModel = await this.getOpenAICompatibleProviderModel();
+		const openAICompatibleProviderKey = await this.getOpenAICompatibleProviderKey();
 
 		if (await this.usingGitButlerAPI()) return !!get(this.tokenMemoryService.token);
 
@@ -208,9 +227,14 @@ export class AIService {
 		const anthropicActiveAndKeyProvided = modelKind === ModelKind.Anthropic && !!anthropicKey;
 		const ollamaActiveAndEndpointProvided =
 			modelKind === ModelKind.Ollama && !!ollamaEndpoint && !!ollamaModelName;
+		const openAICompatibleProviderActiveAndKeyProvided =
+			modelKind === ModelKind.OpenAICompatibleProvider && !!openAICompatibleProviderEndpoint;
 
 		return (
-			openAIActiveAndKeyProvided || anthropicActiveAndKeyProvided || ollamaActiveAndEndpointProvided
+			openAIActiveAndKeyProvided ||
+			anthropicActiveAndKeyProvided ||
+			ollamaActiveAndEndpointProvided ||
+			openAICompatibleProviderActiveAndKeyProvided
 		);
 	}
 
@@ -230,6 +254,26 @@ export class AIService {
 			}
 
 			return ok(new ButlerAIClient(this.cloud, modelKind));
+		}
+
+		if (modelKind === ModelKind.OpenAICompatibleProvider) {
+			const openAICompatibleProviderEndpoint = await this.getOpenAICompatibleProviderEndpoint();
+			const openAICompatibleProviderKey = await this.getOpenAICompatibleProviderKey();
+			const openAICompatibleProviderModel = await this.getOpenAICompatibleProviderModel();
+
+			if (!openAICompatibleProviderEndpoint) {
+				return buildFailureFromAny(
+					'When using OpenAI Compatible Provider, you must provide an valid endpoint'
+				);
+			}
+
+			return ok(
+				new OpenAICompatibleClient(
+					openAICompatibleProviderEndpoint,
+					openAICompatibleProviderKey,
+					openAICompatibleProviderModel
+				)
+			);
 		}
 
 		if (modelKind === ModelKind.Ollama) {

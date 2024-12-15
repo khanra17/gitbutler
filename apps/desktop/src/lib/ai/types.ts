@@ -5,7 +5,8 @@ import type { Persisted } from '@gitbutler/shared/persisted';
 export enum ModelKind {
 	OpenAI = 'openai',
 	Anthropic = 'anthropic',
-	Ollama = 'ollama'
+	Ollama = 'ollama',
+	OpenAICompatibleProvider = 'openai-compatible-provider'
 }
 
 // https://platform.openai.com/docs/models

@@ -1,6 +1,7 @@
 import { AnthropicAIClient } from '$lib/ai/anthropicClient';
 import { ButlerAIClient } from '$lib/ai/butlerClient';
 import { OpenAIClient } from '$lib/ai/openAIClient';
+import { OpenAICompatibleClient } from '$lib/ai/openAICompatibleClient';
 import {
 	SHORT_DEFAULT_BRANCH_TEMPLATE,
 	SHORT_DEFAULT_COMMIT_TEMPLATE,
@@ -227,6 +228,35 @@ describe('AIService', () => {
 			expect(await aiService.buildClient()).toStrictEqual(
 				buildFailureFromAny(
 					'When using Anthropic in a bring your own key configuration, you must provide a valid token'
+				)
+			);
+		});
+
+		test('When ai provider is OpenAI Compatible Provider, When and endpoint is present, It returns OpenAICompatibleClient', async () => {
+			const gitConfig = new DummyGitConfigService({
+				...defaultGitConfig,
+				[GitAIConfigKey.OpenAICompatibleProviderEndpoint]: 'https://api.openrouter.ai/v1',
+				[GitAIConfigKey.ModelProvider]: ModelKind.OpenAICompatibleProvider
+			});
+			const secretsService = new DummySecretsService({
+				[AISecretHandle.OpenAICompatibleProviderKey]: 'test-key'
+			});
+			const aiService = new AIService(gitConfig, secretsService, cloud, tokenMemoryService);
+
+			expect(unwrap(await aiService.buildClient())).toBeInstanceOf(OpenAICompatibleClient);
+		});
+
+		test('When ai provider is OpenAI Compatible Provider, When endpoint is missing, It returns error', async () => {
+			const gitConfig = new DummyGitConfigService({
+				...defaultGitConfig,
+				[GitAIConfigKey.ModelProvider]: ModelKind.OpenAICompatibleProvider
+			});
+			const secretsService = new DummySecretsService();
+			const aiService = new AIService(gitConfig, secretsService, cloud, tokenMemoryService);
+
+			expect(await aiService.buildClient()).toStrictEqual(
+				buildFailureFromAny(
+					'When using OpenAI Compatible Provider, you must provide an valid endpoint'
 				)
 			);
 		});
